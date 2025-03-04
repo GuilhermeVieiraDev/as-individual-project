@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
+using System.Diagnostics;
+using eShop.Ordering.API.Infrastructure.Telemetry;
 using CardType = eShop.Ordering.API.Application.Queries.CardType;
 using Order = eShop.Ordering.API.Application.Queries.Order;
 
@@ -24,8 +26,12 @@ public static class OrdersApi
         CancelOrderCommand command,
         [AsParameters] OrderServices services)
     {
+        using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.CancelOrderActivityName);
+        activity?.AddTag(OrderingTelemetry.OrderIdTag, command.OrderNumber);
+        
         if (requestId == Guid.Empty)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Missing RequestId");
             return TypedResults.BadRequest("Empty GUID is not valid for request ID");
         }
 
@@ -42,9 +48,11 @@ public static class OrdersApi
 
         if (!commandResult)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Cancel order failed");
             return TypedResults.Problem(detail: "Cancel order failed to process.", statusCode: 500);
         }
 
+        activity?.SetStatus(ActivityStatusCode.Ok);
         return TypedResults.Ok();
     }
 
@@ -53,8 +61,12 @@ public static class OrdersApi
         ShipOrderCommand command,
         [AsParameters] OrderServices services)
     {
+        using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.ShipOrderActivityName);
+        activity?.AddTag(OrderingTelemetry.OrderIdTag, command.OrderNumber);
+        
         if (requestId == Guid.Empty)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Missing RequestId");
             return TypedResults.BadRequest("Empty GUID is not valid for request ID");
         }
 
@@ -71,21 +83,28 @@ public static class OrdersApi
 
         if (!commandResult)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Ship order failed");
             return TypedResults.Problem(detail: "Ship order failed to process.", statusCode: 500);
         }
 
+        activity?.SetStatus(ActivityStatusCode.Ok);
         return TypedResults.Ok();
     }
 
     public static async Task<Results<Ok<Order>, NotFound>> GetOrderAsync(int orderId, [AsParameters] OrderServices services)
     {
+        using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.GetOrderActivityName);
+        activity?.AddTag(OrderingTelemetry.OrderIdTag, orderId);
+        
         try
         {
             var order = await services.Queries.GetOrderAsync(orderId);
+            activity?.SetStatus(ActivityStatusCode.Ok);
             return TypedResults.Ok(order);
         }
-        catch
+        catch (Exception ex)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return TypedResults.NotFound();
         }
     }
@@ -93,18 +112,31 @@ public static class OrdersApi
     public static async Task<Ok<IEnumerable<OrderSummary>>> GetOrdersByUserAsync([AsParameters] OrderServices services)
     {
         var userId = services.IdentityService.GetUserIdentity();
+        
+        using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.GetOrdersByUserActivityName);
+        activity?.AddTag(OrderingTelemetry.UserIdTag, userId);
+        
         var orders = await services.Queries.GetOrdersFromUserAsync(userId);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        
         return TypedResults.Ok(orders);
     }
 
     public static async Task<Ok<IEnumerable<CardType>>> GetCardTypesAsync(IOrderQueries orderQueries)
     {
+        using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.GetCardTypesActivityName);
+        
         var cardTypes = await orderQueries.GetCardTypesAsync();
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        
         return TypedResults.Ok(cardTypes);
     }
 
     public static async Task<OrderDraftDTO> CreateOrderDraftAsync(CreateOrderDraftCommand command, [AsParameters] OrderServices services)
     {
+        using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.CreateOrderDraftActivityName);
+        activity?.AddTag(OrderingTelemetry.UserIdTag, command.BuyerId);
+        
         services.Logger.LogInformation(
             "Sending command: {CommandName} - {IdProperty}: {CommandId} ({@Command})",
             command.GetGenericTypeName(),
@@ -112,7 +144,10 @@ public static class OrdersApi
             command.BuyerId,
             command);
 
-        return await services.Mediator.Send(command);
+        var result = await services.Mediator.Send(command);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        
+        return result;
     }
 
     public static async Task<Results<Ok, BadRequest<string>>> CreateOrderAsync(
@@ -120,8 +155,12 @@ public static class OrdersApi
         CreateOrderRequest request,
         [AsParameters] OrderServices services)
     {
+        using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.CreateOrderActivityName);
         
-        //mask the credit card number
+        // Add activity tags
+        activity?.AddTag(OrderingTelemetry.UserIdTag, request.UserId);
+        activity?.AddTag(OrderingTelemetry.OrderItemsCountTag, request.Items.Count);
+        activity?.AddTag(OrderingTelemetry.ShippingCountryTag, request.Country);
         
         services.Logger.LogInformation(
             "Sending command: {CommandName} - {IdProperty}: {CommandId}",
@@ -131,6 +170,7 @@ public static class OrdersApi
 
         if (requestId == Guid.Empty)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Missing RequestId");
             services.Logger.LogWarning("Invalid IntegrationEvent - RequestId is missing - {@IntegrationEvent}", request);
             return TypedResults.BadRequest("RequestId is missing.");
         }
@@ -146,20 +186,21 @@ public static class OrdersApi
             var requestCreateOrder = new IdentifiedCommand<CreateOrderCommand, bool>(createOrderCommand, requestId);
 
             services.Logger.LogInformation(
-                "Sending command: {CommandName} - {IdProperty}: {CommandId} ({@Command})",
+                "Sending command: {CommandName} - {IdProperty}: {CommandId}",
                 requestCreateOrder.GetGenericTypeName(),
                 nameof(requestCreateOrder.Id),
-                requestCreateOrder.Id,
-                requestCreateOrder);
+                requestCreateOrder.Id);
 
             var result = await services.Mediator.Send(requestCreateOrder);
 
             if (result)
             {
+                activity?.SetStatus(ActivityStatusCode.Ok);
                 services.Logger.LogInformation("CreateOrderCommand succeeded - RequestId: {RequestId}", requestId);
             }
             else
             {
+                activity?.SetStatus(ActivityStatusCode.Error, "Create order failed");
                 services.Logger.LogWarning("CreateOrderCommand failed - RequestId: {RequestId}", requestId);
             }
 
