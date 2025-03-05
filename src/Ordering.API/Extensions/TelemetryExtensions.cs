@@ -8,7 +8,7 @@ public static class TelemetryExtensions
 {
     public static IHostApplicationBuilder AddOrderingTelemetry(this IHostApplicationBuilder builder)
     {
-        // Register our custom activity source
+        // Register our custom activity source and ensure OTLP exporter is configured
         builder.Services.ConfigureOpenTelemetryTracerProvider(tracerProviderBuilder =>
         {
             tracerProviderBuilder
@@ -22,6 +22,11 @@ public static class TelemetryExtensions
                         {
                             ["deployment.environment"] = builder.Environment.EnvironmentName
                         }));
+                
+            tracerProviderBuilder.AddOtlpExporter(options => {
+                options.Endpoint = new Uri("http://localhost:4317");
+                options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+            });
         });
         
         return builder;
