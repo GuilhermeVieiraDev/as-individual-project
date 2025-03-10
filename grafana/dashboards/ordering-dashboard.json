@@ -507,7 +507,7 @@
 				},
 				{
 				  "color": "red",
-				  "value": 2
+				  "value": 10
 				}
 			  ]
 			},
@@ -701,7 +701,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\", method=\"GET\"}[5m]))",
+			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\", http_request_method=\"GET\"}[5m]))",
 			"instant": false,
 			"legendFormat": "GET Requests",
 			"range": true,
@@ -713,7 +713,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\", method=\"POST\"}[5m]))",
+			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\", http_request_method=\"POST\"}[5m]))",
 			"instant": false,
 			"legendFormat": "POST Requests",
 			"range": true,
@@ -838,7 +838,6 @@
 		  }
 		],
 		"title": "Error Rate by Type",
-		"title": "Error Rate by Endpoint",
 		"type": "timeseries"
 	  },
 	  {
@@ -927,9 +926,9 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum by(http_method, http_route) (rate(http_server_request_duration_seconds_sum{instance=\"host.docker.internal:5224\"}[5m])) / sum by(http_method, http_route) (rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum by(http_request_method, http_route) (rate(http_server_request_duration_seconds_sum{instance=\"host.docker.internal:5224\"}[5m])) / sum by(http_request_method, http_route) (rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\"}[5m]))",
 			"instant": false,
-			"legendFormat": "{{http_method}} {{http_route}}",
+			"legendFormat": "{{http_request_method}} {{http_route}}",
 			"range": true,
 			"refId": "A"
 		  }
