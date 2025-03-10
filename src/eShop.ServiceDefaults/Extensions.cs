@@ -58,10 +58,15 @@ public static partial class Extensions
         builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
+                // For metrics, use the standard ASP.NET Core instrumentation without additional options
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
-                    .AddMeter("Experimental.Microsoft.Extensions.AI");
+                    .AddMeter("Experimental.Microsoft.Extensions.AI")
+                    .AddMeter("eShop.Ordering"); // Make sure our custom meter is included
+
+                // Add Prometheus exporter
+                metrics.AddPrometheusExporter();
             })
             .WithTracing(tracing =>
             {
@@ -71,10 +76,21 @@ public static partial class Extensions
                     tracing.SetSampler(new AlwaysOnSampler());
                 }
 
-                tracing.AddAspNetCoreInstrumentation()
+                // Add enhanced configuration for tracing
+                tracing.AddAspNetCoreInstrumentation(options => 
+                {
+                    // Ensure route and HTTP method are captured in spans
+                    options.RecordException = true;
+                    options.EnrichWithHttpRequest = (activity, request) => 
+                    {
+                        activity.SetTag("http.route", request.Path);
+                        activity.SetTag("http.method", request.Method);
+                    };
+                })
                     .AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddSource("Experimental.Microsoft.Extensions.AI");                    
+                    .AddSource("Experimental.Microsoft.Extensions.AI")
+                    .AddSource("eShop.Ordering"); // Make sure our activity source is included
             });
 
         builder.AddOpenTelemetryExporters();
@@ -107,8 +123,8 @@ public static partial class Extensions
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        // Uncomment the following line to enable the Prometheus endpoint (requires the OpenTelemetry.Exporter.Prometheus.AspNetCore package)
-        // app.MapPrometheusScrapingEndpoint();
+        // Enable the Prometheus metrics endpoint
+        app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
         // Adding health checks endpoints to applications in non-development environments has security implications.
         // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.

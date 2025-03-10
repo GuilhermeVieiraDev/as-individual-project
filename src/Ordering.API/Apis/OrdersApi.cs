@@ -32,6 +32,8 @@ public static class OrdersApi
         if (requestId == Guid.Empty)
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Missing RequestId");
+            OrderingMetrics.ValidationErrors.Add(1);
+            OrderingMetrics.RequestErrors.Add(1);
             return TypedResults.BadRequest("Empty GUID is not valid for request ID");
         }
 
@@ -49,6 +51,7 @@ public static class OrdersApi
         if (!commandResult)
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Cancel order failed");
+            OrderingMetrics.ProcessingErrors.Add(1);
             return TypedResults.Problem(detail: "Cancel order failed to process.", statusCode: 500);
         }
 
@@ -67,6 +70,8 @@ public static class OrdersApi
         if (requestId == Guid.Empty)
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Missing RequestId");
+            OrderingMetrics.ValidationErrors.Add(1);
+            OrderingMetrics.RequestErrors.Add(1);
             return TypedResults.BadRequest("Empty GUID is not valid for request ID");
         }
 
@@ -84,6 +89,7 @@ public static class OrdersApi
         if (!commandResult)
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Ship order failed");
+            OrderingMetrics.ProcessingErrors.Add(1);
             return TypedResults.Problem(detail: "Ship order failed to process.", statusCode: 500);
         }
 
@@ -105,6 +111,7 @@ public static class OrdersApi
         catch (Exception ex)
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            OrderingMetrics.ProcessingErrors.Add(1);
             return TypedResults.NotFound();
         }
     }
@@ -155,6 +162,7 @@ public static class OrdersApi
         CreateOrderRequest request,
         [AsParameters] OrderServices services)
     {
+        var stopwatch = Stopwatch.StartNew();
         using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.CreateOrderActivityName);
         
         // Add activity tags
@@ -172,7 +180,18 @@ public static class OrdersApi
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Missing RequestId");
             services.Logger.LogWarning("Invalid IntegrationEvent - RequestId is missing - {@IntegrationEvent}", request);
+            OrderingMetrics.ValidationErrors.Add(1);
+            OrderingMetrics.RequestErrors.Add(1);
             return TypedResults.BadRequest("RequestId is missing.");
+        }
+
+        // Validate basic requirements
+        if (string.IsNullOrEmpty(request.UserId) || string.IsNullOrEmpty(request.CardNumber) || request.Items == null || !request.Items.Any())
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, "Invalid order data");
+            services.Logger.LogWarning("Invalid order data - RequestId: {RequestId}", requestId);
+            OrderingMetrics.ValidationErrors.Add(1);
+            return TypedResults.BadRequest("Invalid order data.");
         }
 
         using (services.Logger.BeginScope(new List<KeyValuePair<string, object>> { new("IdentifiedCommandId", requestId) }))
@@ -193,13 +212,21 @@ public static class OrdersApi
 
             var result = await services.Mediator.Send(requestCreateOrder);
 
+            stopwatch.Stop();
+            
             if (result)
             {
+                // Record successful metrics
+                OrderingMetrics.OrdersCreated.Add(1);
+                OrderingMetrics.PaymentProcessed.Add(1);
+                OrderingMetrics.OrderProcessingTime.Record(stopwatch.Elapsed.TotalSeconds);
+                
                 activity?.SetStatus(ActivityStatusCode.Ok);
                 services.Logger.LogInformation("CreateOrderCommand succeeded - RequestId: {RequestId}", requestId);
             }
             else
             {
+                OrderingMetrics.ProcessingErrors.Add(1);
                 activity?.SetStatus(ActivityStatusCode.Error, "Create order failed");
                 services.Logger.LogWarning("CreateOrderCommand failed - RequestId: {RequestId}", requestId);
             }

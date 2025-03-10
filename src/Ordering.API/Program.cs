@@ -1,4 +1,5 @@
 ﻿using eShop.Ordering.API.Extensions;
+using eShop.Ordering.API.Infrastructure.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,9 @@ var withApiVersioning = builder.Services.AddApiVersioning();
 builder.AddDefaultOpenApi(withApiVersioning);
 
 var app = builder.Build();
+
+// Add our request metrics middleware before other middleware
+app.UseRequestMetrics();
 
 app.MapDefaultEndpoints();
 

@@ -16,21 +16,30 @@ This implementation adds OpenTelemetry tracing to the eShop application, focusin
 
 3. **Observability Stack**
    - Set up Jaeger for distributed tracing
-   - Configured Grafana for visualization
+   - Set up Prometheus for metrics collection
+   - Configured Grafana for visualization of both traces and metrics
    - Created custom dashboards for the order flow
 
 ## Architecture
 
 ```
-   Client                 Ordering API                    Jaeger
+   Client                 Ordering API                  Observability Stack
 +---------+    HTTP    +-------------+    OTLP     +---------------+
-| Browser | ---------> | ASP.NET Core| ----------> | Trace Storage |
-+---------+            +-------------+             +---------------+
+| Browser | ---------> | ASP.NET Core| ----------> | Jaeger        |
++---------+            +-------------+             | (Traces)      |
+                             |                     +---------------+
                              |                            |
-                             |                            |
-                       +-------------+              +------------+
-                       | Database    |              | Grafana    |
-                       +-------------+              +------------+
+                       +-------------+                    v
+                       | Database    |             +---------------+
+                       +-------------+             | Prometheus    |
+                             ^                     | (Metrics)     |
+                             |                     +---------------+
+                       +-------------+                    |
+                       | Metrics     |                    v
+                       | Endpoint    |             +---------------+
+                       +-------------+             | Grafana       |
+                                                   | (Dashboards)  |
+                                                   +---------------+
 ```
 
 ## Implementation Details
@@ -41,7 +50,13 @@ This implementation adds OpenTelemetry tracing to the eShop application, focusin
 - **PiiRedactionProcessor**: Processor that redacts sensitive information from spans
 - **TelemetryExtensions**: Extension methods for configuration
 
-### 2. Data Security
+### 2. Metrics Components
+
+- **Prometheus Exporter**: Exposes metrics at the `/metrics` endpoint
+- **Metric Instrumentation**: HTTP requests, database operations, etc.
+- **Custom Metrics**: Business-relevant metrics for the ordering process
+
+### 3. Data Security
 
 The implementation includes several layers of protection:
 
@@ -59,6 +74,7 @@ docker-compose -f docker-compose.observability.yml up -d
 
 This starts:
 - Jaeger (accessible at http://localhost:16686)
+- Prometheus (accessible at http://localhost:9090)
 - Grafana (accessible at http://localhost:3000)
 
 ### 2. Start the eShop Application
@@ -73,16 +89,18 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 ### 3. Run the Load Test
 
 ```bash
-chmod +x load-test.sh
-./load-test.sh
+./load-test.ps1
 ```
 
-### 4. View Traces in Grafana
+### 4. View Data in Grafana
 
 1. Open Grafana at http://localhost:3000
    - Username: admin
    - Password: admin
 2. Navigate to the "eShop Order Flow" dashboard
+3. You'll see panels showing both:
+   - Trace data from Jaeger
+   - Metrics data from Prometheus
 
 ## Verifying Sensitive Data Protection
 
@@ -92,8 +110,18 @@ chmod +x load-test.sh
    - Personal information
 3. Verify the data is properly masked/redacted
 
+## Benefits of Using Prometheus
+
+1. **Metrics Collection**: Collects and stores time-series data about API requests, errors, and system-level metrics
+2. **Long-term Trend Analysis**: Allows tracking performance patterns over time
+3. **Alerting Capabilities**: Can be used to set up alerts when metrics exceed thresholds
+4. **Complementary to Tracing**: When used alongside Jaeger, provides a complete observability solution
+   - Traces show detailed information about individual requests
+   - Metrics show aggregated data about system behavior
+
 ## Future Enhancements
 
-- Add more business metrics
+- Add custom business metrics to measure order flow health
+- Set up alerting based on key metrics
 - Expand tracing to other microservices
 - Implement database column masking for persistent data

@@ -1,4 +1,5 @@
 using eShop.Ordering.API.Infrastructure.Telemetry;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -27,6 +28,24 @@ public static class TelemetryExtensions
                 options.Endpoint = new Uri("http://localhost:4317");
                 options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
             });
+        });
+        
+        // Register our custom meter
+        builder.Services.ConfigureOpenTelemetryMeterProvider(meterProviderBuilder =>
+        {
+            meterProviderBuilder
+                .AddMeter(OrderingMetrics.Meter.Name)
+                .SetResourceBuilder(
+                    ResourceBuilder.CreateDefault()
+                        .AddService("OrderingAPI")
+                        .AddTelemetrySdk()
+                        .AddAttributes(new Dictionary<string, object>
+                        {
+                            ["deployment.environment"] = builder.Environment.EnvironmentName
+                        }));
+                        
+            // Ensure we have a Prometheus exporter
+            meterProviderBuilder.AddPrometheusExporter();
         });
         
         return builder;
