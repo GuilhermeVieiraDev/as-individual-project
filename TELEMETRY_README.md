@@ -5,64 +5,68 @@ This implementation adds OpenTelemetry tracing to the eShop application, focusin
 ## Features Implemented
 
 1. **OpenTelemetry Tracing**
-   - Added tracing to the entire order flow
-   - Instrumented all API endpoints in the Ordering service
-   - Configured custom activity source for detailed spans
+   - End-to-end tracing of the order placement flow
+   - Custom activity source with detailed span information
+   - Proper trace context propagation
 
 2. **PII Data Protection**
-   - Implemented custom OpenTelemetry processor for PII redaction
-   - Masked sensitive data in logs (credit card numbers, personal details)
-   - Ensured no sensitive data leaks in traces
+   - Custom OpenTelemetry processor for PII redaction in traces
+   - Sensitive data log formatter for filtering PII from logs
+   - Masking of credit card numbers, personal information, etc.
 
 3. **Observability Stack**
-   - Set up Jaeger for distributed tracing
-   - Set up Prometheus for metrics collection
-   - Configured Grafana for visualization of both traces and metrics
-   - Created custom dashboards for the order flow
+   - Jaeger for distributed tracing visualization
+   - Prometheus for metrics collection
+   - Grafana dashboards for comprehensive visualization
+   - Custom metrics for business-level monitoring
 
 ## Architecture
 
 ```
-   Client                 Ordering API                  Observability Stack
-+---------+    HTTP    +-------------+    OTLP     +---------------+
-| Browser | ---------> | ASP.NET Core| ----------> | Jaeger        |
-+---------+            +-------------+             | (Traces)      |
-                             |                     +---------------+
-                             |                            |
-                       +-------------+                    v
-                       | Database    |             +---------------+
-                       +-------------+             | Prometheus    |
-                             ^                     | (Metrics)     |
-                             |                     +---------------+
-                       +-------------+                    |
-                       | Metrics     |                    v
-                       | Endpoint    |             +---------------+
-                       +-------------+             | Grafana       |
-                                                   | (Dashboards)  |
-                                                   +---------------+
+                                    +------------------+
+                                    | Docker Container |
+                                    +------------------+
+                                             |
+                                             v
++---------+         +---------------+    +--------+    
+| Browser |-------->| Ordering API  |--->| Jaeger |
++---------+   HTTP  | (OTel Tracing)|    +--------+    
+                    +---------------+         |
+                          |                   |
+                          v                   v
+                    +-------------+     +-----------+
+                    | Metrics     |---->|Prometheus |
+                    | Endpoint    |     +-----------+
+                    +-------------+          |
+                                             v
+                                        +----------+
+                                        | Grafana  |
+                                        | Dashboard|
+                                        +----------+
 ```
+
+Note: As per assignment requirements, only the Ordering API has been instrumented with OpenTelemetry, focusing on the "Place an Order" flow. Other APIs in the eShop application are not connected to the observability stack.
 
 ## Implementation Details
 
-### 1. Tracing Components
+### 1. Tracing Configuration
 
-- **OrderingTelemetry**: Custom ActivitySource for creating spans
-- **PiiRedactionProcessor**: Processor that redacts sensitive information from spans
-- **TelemetryExtensions**: Extension methods for configuration
+- **ServiceDefaults Extension**: Base OpenTelemetry setup in `eShop.ServiceDefaults`
+- **OrderingTelemetry**: Custom ActivitySource for detailed trace spans
+- **Telemetry Extensions**: Ordering-specific telemetry configuration
+- **PiiRedactionProcessor**: Processor that sanitizes PII from traces
 
-### 2. Metrics Components
+### 2. Metrics Implementation
 
-- **Prometheus Exporter**: Exposes metrics at the `/metrics` endpoint
-- **Metric Instrumentation**: HTTP requests, database operations, etc.
-- **Custom Metrics**: Business-relevant metrics for the ordering process
+- **OrderingMetrics**: Custom metrics for business-relevant measurements
+- **RequestMetricsMiddleware**: Captures HTTP-level metrics
+- **Prometheus Integration**: Exports metrics to Prometheus for visualization
 
-### 3. Data Security
+### 3. Log and Sensitive Data Protection
 
-The implementation includes several layers of protection:
-
-- Credit card numbers are masked at the application level
-- PII redaction in spans via custom processor
-- Log filtering to prevent sensitive data from appearing in logs
+- **SensitiveDataLogFormatter**: Sanitizes log messages to avoid exposing PII
+- **PiiRedactionProcessor**: Ensures trace spans don't contain sensitive data
+- **Application-level Masking**: Credit card and personal data masked at source
 
 ## Setup Instructions
 
@@ -72,56 +76,76 @@ The implementation includes several layers of protection:
 docker-compose -f docker-compose.observability.yml up -d
 ```
 
-This starts:
+This will start:
 - Jaeger (accessible at http://localhost:16686)
 - Prometheus (accessible at http://localhost:9090)
-- Grafana (accessible at http://localhost:3000)
+- Grafana (accessible at http://localhost:3000, login: admin/admin)
 
 ### 2. Start the eShop Application
 
-Follow the standard eShop startup procedure, but ensure the OTLP endpoint environment variables are set:
+Build and run the eShop application.
 
 ```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+dotnet run --project src/eShop.AppHost/eShop.AppHost.csproj
 ```
 
-### 3. Run the Load Test
+### 3. Generate Test Data
+
+Run the load test script to create orders and generate telemetry:
 
 ```bash
-./load-test.ps1
+./order-flow-test.ps1
 ```
 
-### 4. View Data in Grafana
+This will create multiple orders and trigger the full order flow with tracing.
 
-1. Open Grafana at http://localhost:3000
-   - Username: admin
-   - Password: admin
-2. Navigate to the "eShop Order Flow" dashboard
-3. You'll see panels showing both:
-   - Trace data from Jaeger
-   - Metrics data from Prometheus
+In order to run the script, we had to disable authentication in the Ordering API.
 
-## Verifying Sensitive Data Protection
+### 4. View Traces and Metrics
 
-1. Execute several orders via the load test script
-2. Check Jaeger spans for any of these fields:
-   - Credit card information
-   - Personal information
-3. Verify the data is properly masked/redacted
+#### Jaeger UI (http://localhost:16686)
+1. Select "OrderingAPI" from the Service dropdown
+2. Click "Find Traces" to view traces
+3. Click on individual traces to see the full request flow
 
-## Benefits of Using Prometheus
+#### Prometheus (http://localhost:9090)
+1. Go to the Graph tab
+2. Search for metrics like:
+   - `orders_created_total`
+   - `payments_processed_total`
+   - `order_processing_seconds_bucket`
 
-1. **Metrics Collection**: Collects and stores time-series data about API requests, errors, and system-level metrics
-2. **Long-term Trend Analysis**: Allows tracking performance patterns over time
-3. **Alerting Capabilities**: Can be used to set up alerts when metrics exceed thresholds
-4. **Complementary to Tracing**: When used alongside Jaeger, provides a complete observability solution
-   - Traces show detailed information about individual requests
-   - Metrics show aggregated data about system behavior
+#### Grafana (http://localhost:3000)
+1. Log in with admin/admin
+2. Go to Dashboards
+3. Open the "eShop Order Flow Dashboard"
+4. View metrics and traces in the preconfigured panels
 
-## Future Enhancements
+## Verification of Security Measures
 
-- Add custom business metrics to measure order flow health
-- Set up alerting based on key metrics
-- Expand tracing to other microservices
-- Implement database column masking for persistent data
+To verify sensitive data is properly protected:
+
+1. Create orders with the load test script
+2. Check Jaeger spans for the following fields:
+   - Credit card information (should show as "[REDACTED]" or masked)
+   - Personal information (should be partially masked)
+3. Look at console logs to verify PII is not exposed
+
+## Troubleshooting
+
+If you don't see data in the observability tools:
+
+1. Run the `test-metrics.ps1` script to check if metrics are being exported
+2. Verify Docker containers are running with `docker ps`
+3. Check the Ordering API logs for any OpenTelemetry-related errors
+4. Make sure the Ordering API can reach Jaeger at http://localhost:4317
+
+## Key Files
+
+- `src/Ordering.API/Infrastructure/Telemetry/OrderingTelemetry.cs`: Activity source definition
+- `src/Ordering.API/Infrastructure/Telemetry/PiiRedactionProcessor.cs`: PII sanitization
+- `src/Ordering.API/Infrastructure/Telemetry/OrderingMetrics.cs`: Custom metrics
+- `src/Ordering.API/Infrastructure/Telemetry/SensitiveDataLogFormatter.cs`: Log sanitization
+- `src/Ordering.API/Extensions/TelemetryExtensions.cs`: Telemetry configuration
+- `deployment/grafana/dashboards/ordering-dashboard.json`: Grafana dashboard
+- `docker-compose.observability.yml`: Docker setup for observability stack

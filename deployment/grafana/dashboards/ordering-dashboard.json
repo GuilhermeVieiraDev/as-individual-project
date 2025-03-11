@@ -1057,56 +1057,6 @@
 		],
 		"title": "Recent Order Traces",
 		"type": "table"
-	  },
-	  {
-		"datasource": {
-		  "type": "jaeger",
-		  "uid": "jaeger"
-		},
-		"description": "Trace visualization",
-		"fieldConfig": {
-		  "defaults": {},
-		  "overrides": []
-		},
-		"gridPos": {
-		  "h": 12,
-		  "w": 24,
-		  "x": 0,
-		  "y": 44
-		},
-		"id": 114,
-		"options": {
-		  "spanFilters": {
-			"operator": "AND",
-			"filters": [
-			  {
-				"id": "filter-1",
-				"tag": "operation.name",
-				"operator": "=",
-				"value": "CreateOrder",
-				"valueType": "STATIC"
-			  }
-			]
-		  }
-		},
-		"targets": [
-		  {
-			"datasource": {
-			  "type": "jaeger",
-			  "uid": "jaeger"
-			},
-			"operation": "CreateOrder",
-			"queryType": "search",
-			"refId": "A",
-			"service": "OrderingAPI",
-			"lookback": "1h",
-			"maxDuration": "",
-			"minDuration": "",
-			"limit": 20
-		  }
-		],
-		"title": "Order Creation Traces",
-		"type": "traces"
 	  }
 	],
 	"refresh": "10s",

@@ -1,11 +1,20 @@
 ﻿using eShop.Ordering.API.Extensions;
 using eShop.Ordering.API.Infrastructure.Middlewares;
+using eShop.Ordering.API.Infrastructure.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add service defaults (includes OpenTelemetry setup)
 builder.AddServiceDefaults();
 builder.AddApplicationServices();
-builder.AddOrderingTelemetry(); // Add our telemetry configuration
+
+// Add our custom telemetry configuration
+builder.AddOrderingTelemetry();
+
+// Configure sensitive data filtering for logs AFTER other logging is configured
+// to avoid circular dependencies
+builder.Logging.AddSensitiveDataFilter();
+
 builder.Services.AddProblemDetails();
 
 var withApiVersioning = builder.Services.AddApiVersioning();
