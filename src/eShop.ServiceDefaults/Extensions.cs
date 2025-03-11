@@ -63,10 +63,8 @@ public static partial class Extensions
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter("Experimental.Microsoft.Extensions.AI")
-                    .AddMeter("eShop.Ordering"); // Make sure our custom meter is included
-
-                // Add Prometheus exporter
-                metrics.AddPrometheusExporter();
+                    .AddMeter("eShop.Ordering")
+                    .AddPrometheusExporter();
             })
             .WithTracing(tracing =>
             {

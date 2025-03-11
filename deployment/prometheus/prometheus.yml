@@ -3,14 +3,17 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
   - job_name: 'eshop-services'
     metrics_path: '/metrics'
     static_configs:
       - targets: ['host.docker.internal:5224']
         labels:
           service: 'ordering-api'
-      
-  # Add a self-monitoring job for Prometheus itself
-  - job_name: 'prometheus'
+
+  - job_name: 'jaeger'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['jaeger:8889']

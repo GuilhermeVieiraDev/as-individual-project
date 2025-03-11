@@ -2,14 +2,16 @@ version: '3.4'
 
 services:
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/jaeger:latest
     ports:
       - "16686:16686"  # Jaeger UI
       - "4317:4317"    # OTLP gRPC
       - "4318:4318"    # OTLP HTTP
       - "6831:6831/udp"  # Jaeger agent UDP
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
+    volumes:
+      - ./deployment/jaeger/jaeger.yml:/etc/jaeger/jaeger.yml
+    command:
+      - '--config=/etc/jaeger/jaeger.yml'
     networks:
       - eshop-observability
 
@@ -18,7 +20,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus:/etc/prometheus
+      - ./deployment/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -39,8 +42,9 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./deployment/grafana/provisioning:/etc/grafana/provisioning
+      - ./deployment/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
       - jaeger
@@ -50,3 +54,8 @@ services:
 networks:
   eshop-observability:
     driver: bridge
+
+volumes:
+  prometheus_data:
+  jaeger_data:
+  grafana_data:
