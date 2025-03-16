@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Diagnostics;
 using eShop.Ordering.API.Infrastructure.Telemetry;
 using eShop.Ordering.API.Application.Queries;
@@ -8,42 +8,6 @@ using OrderSummary = eShop.Ordering.API.Application.Queries.OrderSummary;
 
 public static class OrdersApi
 {
-    // PII masking helper methods
-    private static string MaskCardNumber(string cardNumber)
-    {
-        if (string.IsNullOrEmpty(cardNumber))
-            return cardNumber;
-            
-        // Keep only last 4 digits visible
-        if (cardNumber.Length > 4)
-            return new string('X', cardNumber.Length - 4) + cardNumber[^4..];
-            
-        return new string('X', cardNumber.Length); // Mask entire short number
-    }
-
-    private static string MaskCardSecurityNumber(string securityNumber)
-    {
-        if (string.IsNullOrEmpty(securityNumber))
-            return securityNumber;
-            
-        // Replace with same number of 'X' characters to maintain length
-        return new string('X', securityNumber.Length);
-    }
-    
-    private static string PartiallyMaskString(string input)
-    {
-        if (string.IsNullOrEmpty(input))
-            return input;
-            
-        if (input.Length <= 2)
-            return input; // Too short to meaningfully mask
-            
-        if (input.Length <= 4)
-            return $"{input[0]}{'*' * (input.Length - 2)}{input[^1]}"; // First and last char visible
-            
-        return $"{input[..2]}{'*' * (input.Length - 4)}{input[^2..]}"; // First two and last two visible
-    }
-
     public static RouteGroupBuilder MapOrdersApiV1(this IEndpointRouteBuilder app)
     {
         var api = app.MapGroup("api/orders").HasApiVersion(1.0);
@@ -159,7 +123,7 @@ public static class OrdersApi
         var userId = services.IdentityService.GetUserIdentity();
         
         using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.GetOrdersByUserActivityName);
-        activity?.AddTag(OrderingTelemetry.UserIdTag, PartiallyMaskString(userId));
+        activity?.AddTag(OrderingTelemetry.UserIdTag, userId);
         
         var orders = await services.Queries.GetOrdersFromUserAsync(userId);
         activity?.SetStatus(ActivityStatusCode.Ok);
@@ -180,14 +144,14 @@ public static class OrdersApi
     public static async Task<OrderDraftDTO> CreateOrderDraftAsync(CreateOrderDraftCommand command, [AsParameters] OrderServices services)
     {
         using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.CreateOrderDraftActivityName);
-        activity?.AddTag(OrderingTelemetry.UserIdTag, PartiallyMaskString(command.BuyerId));
+        activity?.AddTag(OrderingTelemetry.UserIdTag, command.BuyerId);
         
         // Don't log the entire command object as it may contain PII
         services.Logger.LogInformation(
             "Sending command: {CommandName} - {IdProperty}: {CommandId}",
             command.GetGenericTypeName(),
             nameof(command.BuyerId),
-            PartiallyMaskString(command.BuyerId));
+            command.BuyerId);
 
         var result = await services.Mediator.Send(command);
         activity?.SetStatus(ActivityStatusCode.Ok);
@@ -204,12 +168,10 @@ public static class OrdersApi
         using var activity = OrderingTelemetry.Source.StartActivity(OrderingTelemetry.CreateOrderActivityName);
         
         // Add activity tags with PII masking
-        activity?.AddTag(OrderingTelemetry.UserIdTag, PartiallyMaskString(request.UserId));
+        activity?.AddTag(OrderingTelemetry.UserIdTag, request.UserId);
         activity?.AddTag(OrderingTelemetry.OrderItemsCountTag, request.Items?.Count ?? 0);
         activity?.AddTag(OrderingTelemetry.ShippingCountryTag, request.Country);
-        
-        // Add additional tags with proper PII handling
-        activity?.AddTag(OrderingTelemetry.UserNameTag, PartiallyMaskString(request.UserName));
+        activity?.AddTag(OrderingTelemetry.UserNameTag, request.UserName);
         activity?.AddTag(OrderingTelemetry.PaymentMethodTag, request.CardTypeId.ToString());
         
         // Only log essential, non-sensitive information
@@ -238,25 +200,11 @@ public static class OrdersApi
 
         using (services.Logger.BeginScope(new List<KeyValuePair<string, object>> { new("IdentifiedCommandId", requestId) }))
         {
-            // Enhance masking for card data
-            var maskedCCNumber = MaskCardNumber(request.CardNumber);
-            var maskedCCSecurityNumber = MaskCardSecurityNumber(request.CardSecurityNumber);
-            
-            // Create the command without logging sensitive payment details
-            var createOrderCommand = new CreateOrderCommand(
-                request.Items, 
-                request.UserId, 
-                request.UserName, 
-                request.City, 
-                request.Street,
-                request.State, 
-                request.Country, 
-                request.ZipCode,
-                maskedCCNumber, 
-                request.CardHolderName, // Will be masked by PII processor
-                request.CardExpiration,
-                maskedCCSecurityNumber, // Masked for logging
-                request.CardTypeId);
+            var maskedCCNumber = request.CardNumber.Substring(request.CardNumber.Length - 4).PadLeft(request.CardNumber.Length, 'X');
+            var createOrderCommand = new CreateOrderCommand(request.Items, request.UserId, request.UserName, request.City, request.Street,
+                request.State, request.Country, request.ZipCode,
+                maskedCCNumber, request.CardHolderName, request.CardExpiration,
+                request.CardSecurityNumber, request.CardTypeId);
 
             var requestCreateOrder = new IdentifiedCommand<CreateOrderCommand, bool>(createOrderCommand, requestId);
 

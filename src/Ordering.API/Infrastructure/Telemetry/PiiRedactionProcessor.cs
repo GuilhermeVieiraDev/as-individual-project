@@ -30,6 +30,8 @@ public class PiiRedactionProcessor : BaseProcessor<Activity>
 
     private static readonly HashSet<string> _partiallyMaskedTagNames = new(StringComparer.OrdinalIgnoreCase)
     {
+        "user.id",
+        "user.name",
         "UserName",
         "FullName",
         "FirstName",
