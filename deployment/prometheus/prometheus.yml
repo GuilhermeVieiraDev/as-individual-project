@@ -10,10 +10,10 @@ scrape_configs:
   - job_name: 'eshop-services'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['host.docker.internal:5224']
+      - targets: ['localhost:5224']
         labels:
           service: 'ordering-api'
 
   - job_name: 'jaeger'
     static_configs:
-      - targets: ['jaeger:8889']
+      - targets: ['localhost:8889']

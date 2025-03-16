@@ -108,7 +108,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "up{instance=\"host.docker.internal:5224\", job=\"eshop-services\"}",
+			"expr": "up{instance=\"localhost:5224\", job=\"eshop-services\"}",
 			"instant": true,
 			"range": false,
 			"refId": "A"
@@ -179,7 +179,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "100 * (1 - (sum(rate(request_errors_total{instance=\"host.docker.internal:5224\"}[5m])) / (sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\"}[5m])) + 0.001)))",
+			"expr": "100 * (1 - (sum(rate(request_errors_total{instance=\"localhost:5224\"}[5m])) / (sum(rate(http_server_request_duration_seconds_count{instance=\"localhost:5224\"}[5m])) + 0.001)))",
 			"instant": false,
 			"range": true,
 			"refId": "A"
@@ -251,7 +251,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\"}[1m]))",
+			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"localhost:5224\"}[1m]))",
 			"instant": false,
 			"range": true,
 			"refId": "A"
@@ -323,7 +323,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(http_server_request_duration_seconds_sum{instance=\"host.docker.internal:5224\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum(rate(http_server_request_duration_seconds_sum{instance=\"localhost:5224\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{instance=\"localhost:5224\"}[5m]))",
 			"instant": false,
 			"range": true,
 			"refId": "A"
@@ -431,7 +431,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(orders_created_total{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum(rate(orders_created_total{instance=\"localhost:5224\"}[5m]))",
 			"instant": false,
 			"legendFormat": "Orders Created",
 			"range": true,
@@ -443,7 +443,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(payments_processed_total{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum(rate(payments_processed_total{instance=\"localhost:5224\"}[5m]))",
 			"hide": false,
 			"instant": false,
 			"legendFormat": "Payments Processed",
@@ -544,7 +544,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "histogram_quantile(0.5, sum(rate(order_processing_seconds_bucket{instance=\"host.docker.internal:5224\"}[5m])) by (le))",
+			"expr": "histogram_quantile(0.5, sum(rate(order_processing_seconds_bucket{instance=\"localhost:5224\"}[5m])) by (le))",
 			"instant": false,
 			"legendFormat": "p50",
 			"range": true,
@@ -556,7 +556,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "histogram_quantile(0.9, sum(rate(order_processing_seconds_bucket{instance=\"host.docker.internal:5224\"}[5m])) by (le))",
+			"expr": "histogram_quantile(0.9, sum(rate(order_processing_seconds_bucket{instance=\"localhost:5224\"}[5m])) by (le))",
 			"hide": false,
 			"instant": false,
 			"legendFormat": "p90",
@@ -569,7 +569,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "histogram_quantile(0.95, sum(rate(order_processing_seconds_bucket{instance=\"host.docker.internal:5224\"}[5m])) by (le))",
+			"expr": "histogram_quantile(0.95, sum(rate(order_processing_seconds_bucket{instance=\"localhost:5224\"}[5m])) by (le))",
 			"hide": false,
 			"instant": false,
 			"legendFormat": "p95",
@@ -582,7 +582,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "histogram_quantile(0.99, sum(rate(order_processing_seconds_bucket{instance=\"host.docker.internal:5224\"}[5m])) by (le))",
+			"expr": "histogram_quantile(0.99, sum(rate(order_processing_seconds_bucket{instance=\"localhost:5224\"}[5m])) by (le))",
 			"hide": false,
 			"instant": false,
 			"legendFormat": "p99",
@@ -689,7 +689,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"localhost:5224\"}[5m]))",
 			"instant": false,
 			"legendFormat": "Total Requests",
 			"range": true,
@@ -701,7 +701,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\", http_request_method=\"GET\"}[5m]))",
+			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"localhost:5224\", http_request_method=\"GET\"}[5m]))",
 			"instant": false,
 			"legendFormat": "GET Requests",
 			"range": true,
@@ -713,7 +713,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\", http_request_method=\"POST\"}[5m]))",
+			"expr": "sum(rate(http_server_request_duration_seconds_count{instance=\"localhost:5224\", http_request_method=\"POST\"}[5m]))",
 			"instant": false,
 			"legendFormat": "POST Requests",
 			"range": true,
@@ -806,7 +806,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(request_errors_total{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum(rate(request_errors_total{instance=\"localhost:5224\"}[5m]))",
 			"instant": false,
 			"legendFormat": "Total Errors",
 			"range": true,
@@ -818,7 +818,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(validation_errors_total{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum(rate(validation_errors_total{instance=\"localhost:5224\"}[5m]))",
 			"instant": false,
 			"legendFormat": "Validation Errors",
 			"range": true,
@@ -830,7 +830,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum(rate(processing_errors_total{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum(rate(processing_errors_total{instance=\"localhost:5224\"}[5m]))",
 			"instant": false,
 			"legendFormat": "Processing Errors",
 			"range": true,
@@ -926,7 +926,7 @@
 			  "uid": "prometheus"
 			},
 			"editorMode": "code",
-			"expr": "sum by(http_request_method, http_route) (rate(http_server_request_duration_seconds_sum{instance=\"host.docker.internal:5224\"}[5m])) / sum by(http_request_method, http_route) (rate(http_server_request_duration_seconds_count{instance=\"host.docker.internal:5224\"}[5m]))",
+			"expr": "sum by(http_request_method, http_route) (rate(http_server_request_duration_seconds_sum{instance=\"localhost:5224\"}[5m])) / sum by(http_request_method, http_route) (rate(http_server_request_duration_seconds_count{instance=\"localhost:5224\"}[5m]))",
 			"instant": false,
 			"legendFormat": "{{http_request_method}} {{http_route}}",
 			"range": true,
